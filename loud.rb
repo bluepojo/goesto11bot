@@ -1,4 +1,6 @@
 require 'redis'
+require 'yaml'
+require 'twitter'
 
 module Cinch::Plugins
   module LOUD
@@ -52,7 +54,53 @@ module Cinch::Plugins
       def score
         return "#{self.class.last_loud}: #{@db.get(self.class.last_loud)}"
       end
+      
+      def twit_last
+        return "#{self.class.last_loud}"
+      end
     end
+
+    class TWIT
+      include Cinch::Plugin
+
+      def initialize(*args)
+        conf = YAML.load_file( 'base.yml' )
+        Twitter.configure do |config|
+          config.consumer_key = conf["oauth"]["consumer_key"]
+          config.consumer_secret = conf["oauth"]["consumer_secret"]
+          config.oauth_token = conf["oauth"]["oauth_token"]
+          config.oauth_token_secret = conf["oauth"]["oauth_token_secret"]
+        end
+        @twit = Twitter.new
+      end
+
+      def post(text)
+        @twit.update(text)
+      end
+
+      def get_last
+       last = @twit.user_timeline("goesto11bot", :count=> "1")
+       "http://twitter.com/#!/goesto11bot/status/" + last.to_s.match(/([0-9]{10,20})/)[0]
+      end
+    end
+
+   class LISTEN
+     include Cinch::Plugin
+
+     def initialize(*args)
+       super *args
+       @twit = TWIT.new
+       @db = REDIS.new
+     end
+
+     match %r/(twitlast)/, :use_prefix => true, :use_suffix => false
+     react_on :channel
+
+     def execute(m)
+       @twit.post("#{@db.twit_last}")
+       m.reply "#{@twit.get_last}"
+     end
+   end
 
     class BEINGLOUD 
       include Cinch::Plugin
