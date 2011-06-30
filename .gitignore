@@ -7,3 +7,4 @@ redis.sock
 louds.rdb
 louds.db
 appendonly.aof
+oauth.yml

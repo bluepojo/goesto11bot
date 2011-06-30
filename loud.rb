@@ -64,7 +64,7 @@ module Cinch::Plugins
       include Cinch::Plugin
 
       def initialize(*args)
-        conf = YAML.load_file( 'base.yml' )
+        conf = YAML.load_file( 'oauth.yml' )
         Twitter.configure do |config|
           config.consumer_key = conf["oauth"]["consumer_key"]
           config.consumer_secret = conf["oauth"]["consumer_secret"]
