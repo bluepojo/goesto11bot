@@ -152,7 +152,7 @@ module Cinch::Plugins
         @db = REDIS.new
       end
 
-      match %r!search\s*(\S*)!, :use_prefix => true
+      match %r!search\s*(.+)!, :use_prefix => true
       react_on :channel
 
       def execute(m, query)
