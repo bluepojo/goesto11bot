@@ -79,8 +79,8 @@ module Cinch::Plugins
       end
 
       def get_last
-       last = @twit.user_timeline("goesto11bot", :count=> "1")
-       "http://twitter.com/#!/goesto11bot/status/" + last.to_s.match(/([0-9]{10,20})/)[0]
+       last = @twit.user_timeline("loudbot", :count=> "1")
+       "http://twitter.com/#!/loudbot/status/" + last.to_s.match(/([0-9]{10,20})/)[0]
       end
     end
 
@@ -182,6 +182,16 @@ module Cinch::Plugins
         when 'score'
           m.reply(@db.score)
         end
+      end
+    end
+
+    class LOUDDONG
+      include Cinch::Plugin
+      match %r/dongs?$/, :use_prefix => true, :use_suffix => false
+      react_on :channel
+
+      def execute(m)
+        m.reply("8" + ('=' * (rand(20).to_i + 1)) + "D")
       end
     end
   end
