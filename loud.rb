@@ -16,10 +16,10 @@ module Cinch::Plugins
       end
 
       def add_loud(loud)
-        @db.pipelined do
-          @db.setnx loud, 1
-          @db.persist loud
-        end
+        @db.hsetnx(loud, "score", 1)
+        @db.hsetnx(loud, "whosaid_nick", "unknown")
+        @db.hsetnx(loud, "whosaid_server", "unknown")
+        @db.persist loud
       end
 
       def randomloud
@@ -27,7 +27,7 @@ module Cinch::Plugins
 
         loop do
           key = @db.randomkey
-          score = @db.get key
+          score = @db.hget(key, "score")
 
           if score.to_i >= 0
             break
@@ -38,11 +38,11 @@ module Cinch::Plugins
       end
 
       def bump
-        @db.incr self.class.last_loud
+        @db.hset(self.class.last_loud, "score", (@db.hget(self.class.last_loud, "score") || 0).to_i + 1)
       end
 
       def sage
-        @db.decr self.class.last_loud
+        @db.hset(self.class.last_loud, "score", (@db.hget(self.class.last_loud, "score") || 0).to_i - 1)
       end
 
       def search(pattern)
@@ -52,7 +52,7 @@ module Cinch::Plugins
       end
 
       def score
-        return "#{self.class.last_loud}: #{@db.get(self.class.last_loud)}"
+        return "#{self.class.last_loud}: #{@db.hget(self.class.last_loud, "score")}"
       end
       
       def twit_last
