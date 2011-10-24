@@ -15,10 +15,10 @@ module Cinch::Plugins
         self.class.last_loud = randomloud
       end
 
-      def add_loud(loud)
+      def add_loud(loud, channel, nick)
         @db.hsetnx(loud, "score", 1)
-        @db.hsetnx(loud, "whosaid_nick", "unknown")
-        @db.hsetnx(loud, "whosaid_server", "unknown")
+        @db.hsetnx(loud, "whosaid_nick", nick)
+        @db.hsetnx(loud, "whosaid_channel", channel)
         @db.persist loud
       end
 
@@ -53,6 +53,10 @@ module Cinch::Plugins
 
       def score
         return "#{self.class.last_loud}: #{@db.hget(self.class.last_loud, "score")}"
+      end
+
+      def whosaid
+        return "#{self.class.last_loud}: #{@db.hget(self.class.last_loud, "whosaid_nick") || "unknown"} (#{@db.hget(self.class.last_loud, "whosaid_channel") || "unknown"})"
       end
       
       def twit_last
@@ -122,7 +126,7 @@ module Cinch::Plugins
           query.scan(/[A-Z\s0-9]/).length > query.scan(/[^A-Z\s0-9]/).length and
           query !~ /#{Regexp.quote m.bot.nick}/
 
-          @db.add_loud(query)
+          @db.add_loud(query, m.channel.name, m.user.nick)
           m.reply(@db.randomloud)
         end
       end
@@ -170,7 +174,7 @@ module Cinch::Plugins
         @db = REDIS.new
       end
 
-      match %r/(bump|sage|score)$/, :use_prefix => true, :use_suffix => false
+      match %r/(whosaid|bump|sage|score)$/, :use_prefix => true, :use_suffix => false
       react_on :channel
 
       def execute(m, query)
@@ -181,6 +185,8 @@ module Cinch::Plugins
           @db.sage
         when 'score'
           m.reply(@db.score)
+        when 'whosaid'
+          m.reply(@db.whosaid)
         end
       end
     end
