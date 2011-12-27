@@ -79,12 +79,15 @@ module Cinch::Plugins
       end
 
       def post(text)
-        @twit.update(text)
+        @last_tweet = @twit.update(text)
       end
 
       def get_last
-       last = @twit.user_timeline("loudbot", :count=> "1")
-       "http://twitter.com/#!/loudbot/status/" + last.to_s.match(/([0-9]{10,20})/)[0]
+        if @last_tweet
+          "http://twitter.com/#!/loudbot/status/" + @last_tweet[:id].to_s
+        else
+          ""
+        end
       end
     end
 
