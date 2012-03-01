@@ -58,7 +58,7 @@ module Cinch::Plugins
       def whosaid
         return "#{self.class.last_loud}: #{@db.hget(self.class.last_loud, "whosaid_nick") || "unknown"} (#{@db.hget(self.class.last_loud, "whosaid_channel") || "unknown"})"
       end
-      
+
       def twit_last
         return "#{self.class.last_loud}"
       end
@@ -91,27 +91,27 @@ module Cinch::Plugins
       end
     end
 
-   class LISTEN
-     include Cinch::Plugin
-
-     def initialize(*args)
-       super *args
-       @twit = TWIT.new
-       @db = REDIS.new
-     end
-
-     match %r/(twitlast)/, :use_prefix => true, :use_suffix => false
-     react_on :channel
-
-     def execute(m)
-       @twit.post("#{@db.twit_last}")
-       m.reply "#{@twit.get_last}"
-     end
-   end
-
-    class BEINGLOUD 
+    class LISTEN
       include Cinch::Plugin
-      
+
+      def initialize(*args)
+        super *args
+        @twit = TWIT.new
+        @db = REDIS.new
+      end
+
+      match %r/(twitlast)/, :use_prefix => true, :use_suffix => false
+      react_on :channel
+
+      def execute(m)
+        @twit.post("#{@db.twit_last}")
+        m.reply "#{@twit.get_last}"
+      end
+    end
+
+    class BEINGLOUD
+      include Cinch::Plugin
+
       MIN_LENGTH = 10
 
       def initialize(*args)
@@ -124,10 +124,10 @@ module Cinch::Plugins
       react_on :channel
 
       def execute(m, query)
-        if query.length >= MIN_LENGTH and 
-          query =~ /[A-Z]/ and 
-          query.scan(/[A-Z\s0-9]/).length > query.scan(/[^A-Z\s0-9]/).length and
-          query !~ /#{Regexp.quote m.bot.nick}/
+        if query.length >= MIN_LENGTH and
+            query =~ /[A-Z]/ and
+            query.scan(/[A-Z\s0-9]/).length > query.scan(/[^A-Z\s0-9]/).length and
+            query !~ /#{Regexp.quote m.bot.nick}/
 
           @db.add_loud(query, m.channel.name, m.user.nick)
           m.reply(@db.randomloud)
@@ -137,7 +137,7 @@ module Cinch::Plugins
 
     class TALKINGTOLOUD
       include Cinch::Plugin
-      
+
       def initialize(*args)
         super *args
         @db = REDIS.new
@@ -145,7 +145,7 @@ module Cinch::Plugins
 
       prefix lambda { |m| "#{m.bot.nick}" }
       match %r/.*/, :use_prefix => true, :use_suffix => false
-      
+
       def execute(m)
         m.reply(@db.randomloud)
       end

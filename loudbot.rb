@@ -17,7 +17,7 @@ bot = Cinch::Bot.new do
     c.channels = config["channels"]
     c.nick = config["nickname"]
     c.ssl = config["ssl"]
-    c.plugins.plugins = (config["plugins"] || []).map do |key, value| 
+    c.plugins.plugins = (config["plugins"] || []).map do |key, value|
       key.split(/::/).inject(Object) { |x, y| x.const_get(y) }
     end
   end
@@ -38,7 +38,7 @@ if config["daemonize"]
     Process.setsid
 
     bot.start
-  end 
+  end
 else
   bot.start
-end 
+end
