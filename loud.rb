@@ -60,7 +60,7 @@ module Cinch::Plugins
       end
 
       def twit_last
-        return "#{self.class.last_loud}"
+        return self.class.last_loud
       end
     end
 
@@ -95,7 +95,7 @@ module Cinch::Plugins
       include Cinch::Plugin
 
       def initialize(*args)
-        super *args
+        super
         @twit = TWIT.new
         @db = REDIS.new
       end
@@ -104,8 +104,8 @@ module Cinch::Plugins
       react_on :channel
 
       def execute(m)
-        @twit.post("#{@db.twit_last}")
-        m.reply "#{@twit.get_last}"
+        @twit.post(@db.twit_last)
+        m.reply @twit.get_last
       end
     end
 
@@ -115,7 +115,7 @@ module Cinch::Plugins
       MIN_LENGTH = 10
 
       def initialize(*args)
-        super *args
+        super
         @db = REDIS.new
       end
 
@@ -139,11 +139,11 @@ module Cinch::Plugins
       include Cinch::Plugin
 
       def initialize(*args)
-        super *args
+        super
         @db = REDIS.new
       end
 
-      prefix lambda { |m| "#{m.bot.nick}" }
+      prefix lambda { |m| m.bot.nick }
       match %r/.*/, :use_prefix => true, :use_suffix => false
 
       def execute(m)
@@ -155,7 +155,7 @@ module Cinch::Plugins
       include Cinch::Plugin
 
       def initialize(*args)
-        super *args
+        super
         @db = REDIS.new
       end
 
@@ -173,7 +173,7 @@ module Cinch::Plugins
       include Cinch::Plugin
 
       def initialize(*args)
-        super *args
+        super
         @db = REDIS.new
       end
 
