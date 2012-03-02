@@ -16,7 +16,7 @@ bot = Cinch::Bot.new do
     c.server = config["server"]
     c.channels = config["channels"]
     c.nick = config["nickname"]
-    c.ssl = config["ssl"]
+    c.ssl.use = config["ssl"]
     c.plugins.plugins = (config["plugins"] || []).map do |key, value|
       key.split(/::/).inject(Object) { |x, y| x.const_get(y) }
     end
@@ -24,7 +24,7 @@ bot = Cinch::Bot.new do
 
   on :join do |m|
     if m.user == bot and config["welcome_text"]
-      bot.msg(m.channel, config["welcome_text"])
+      m.channel.send(config["welcome_text"])
     end
   end
 end

@@ -99,7 +99,7 @@ module Cinch::Plugins
       end
 
       match "twitlast"
-      react_on :channel
+      self.reacting_on = :channel
 
       def execute(m)
         @twit.post(@db.twit_last)
@@ -118,8 +118,7 @@ module Cinch::Plugins
       end
 
       match %r/^([A-Z0-9\W]{#{MIN_LENGTH},})$/, :use_prefix => false, :use_suffix => false
-
-      react_on :channel
+      self.reacting_on = :channel
 
       def execute(m, query)
         if query =~ /[A-Z]/ and
@@ -140,7 +139,7 @@ module Cinch::Plugins
         @db = REDIS.new
       end
 
-      prefix lambda { |m| m.bot.nick }
+      self.prefix = lambda { |m| m.bot.nick }
       match %r/.*/, :use_prefix => true, :use_suffix => false
 
       def execute(m)
@@ -157,7 +156,7 @@ module Cinch::Plugins
       end
 
       match %r!search\s*(.+)!, :use_prefix => true
-      react_on :channel
+      self.reacting_on = :channel
 
       def execute(m, query)
         @db.search(query.upcase).last(5).each do |loud|
@@ -175,7 +174,7 @@ module Cinch::Plugins
       end
 
       match %r/(whosaid|bump|sage|score)$/, :use_prefix => true, :use_suffix => false
-      react_on :channel
+      self.reacting_on = :channel
 
       def execute(m, query)
         case query
@@ -194,7 +193,7 @@ module Cinch::Plugins
     class LOUDDONG
       include Cinch::Plugin
       match %r/dongs?$/, :use_prefix => true, :use_suffix => false
-      react_on :channel
+      self.reacting_on = :channel
 
       def execute(m)
         m.reply("8" + ('=' * (rand(20).to_i + 1)) + "D")
