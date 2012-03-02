@@ -98,7 +98,7 @@ module Cinch::Plugins
         @db = REDIS.new
       end
 
-      match %r/(twitlast)/, :use_prefix => true, :use_suffix => false
+      match "twitlast"
       react_on :channel
 
       def execute(m)
@@ -117,15 +117,14 @@ module Cinch::Plugins
         @db = REDIS.new
       end
 
-      match %r/^([A-Z0-9\W]+)$/, :use_prefix => false, :use_suffix => false
+      match %r/^([A-Z0-9\W]{#{MIN_LENGTH},})$/, :use_prefix => false, :use_suffix => false
 
       react_on :channel
 
       def execute(m, query)
-        if query.length >= MIN_LENGTH and
-            query =~ /[A-Z]/ and
+        if query =~ /[A-Z]/ and
             query.scan(/[A-Z\s0-9]/).length > query.scan(/[^A-Z\s0-9]/).length and
-            query !~ /#{Regexp.quote m.bot.nick}/
+            !query.include?(m.bot.nick)
 
           @db.add_loud(query, m.channel.name, m.user.nick)
           m.reply(@db.randomloud)
