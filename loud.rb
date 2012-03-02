@@ -65,8 +65,6 @@ module Cinch::Plugins
     end
 
     class TWIT
-      include Cinch::Plugin
-
       def initialize(*args)
         conf = YAML.load_file( 'oauth.yml' )
         Twitter.configure do |config|
