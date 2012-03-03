@@ -58,15 +58,13 @@ module Cinch::Plugins
       def whosaid
         return "#{self.class.last_loud}: #{@db.hget(self.class.last_loud, "whosaid_nick") || "unknown"} (#{@db.hget(self.class.last_loud, "whosaid_channel") || "unknown"})"
       end
-      
+
       def twit_last
-        return "#{self.class.last_loud}"
+        return self.class.last_loud
       end
     end
 
     class TWIT
-      include Cinch::Plugin
-
       def initialize(*args)
         conf = YAML.load_file( 'oauth.yml' )
         Twitter.configure do |config|
@@ -91,43 +89,41 @@ module Cinch::Plugins
       end
     end
 
-   class LISTEN
-     include Cinch::Plugin
-
-     def initialize(*args)
-       super *args
-       @twit = TWIT.new
-       @db = REDIS.new
-     end
-
-     match %r/(twitlast)/, :use_prefix => true, :use_suffix => false
-     react_on :channel
-
-     def execute(m)
-       @twit.post("#{@db.twit_last}")
-       m.reply "#{@twit.get_last}"
-     end
-   end
-
-    class BEINGLOUD 
+    class LISTEN
       include Cinch::Plugin
-      
-      MIN_LENGTH = 10
 
       def initialize(*args)
-        super *args
+        super
+        @twit = TWIT.new
         @db = REDIS.new
       end
 
-      match %r/^([A-Z0-9\W]+)$/, :use_prefix => false, :use_suffix => false
+      match "twitlast"
+      self.reacting_on = :channel
 
-      react_on :channel
+      def execute(m)
+        @twit.post(@db.twit_last)
+        m.reply @twit.get_last
+      end
+    end
+
+    class BEINGLOUD
+      include Cinch::Plugin
+
+      MIN_LENGTH = 10
+
+      def initialize(*args)
+        super
+        @db = REDIS.new
+      end
+
+      match %r/^([A-Z0-9\W]{#{MIN_LENGTH},})$/, :use_prefix => false, :use_suffix => false
+      self.reacting_on = :channel
 
       def execute(m, query)
-        if query.length >= MIN_LENGTH and 
-          query =~ /[A-Z]/ and 
-          query.scan(/[A-Z\s0-9]/).length > query.scan(/[^A-Z\s0-9]/).length and
-          query !~ /#{Regexp.quote m.bot.nick}/
+        if query =~ /[A-Z]/ and
+            query.scan(/[A-Z\s0-9]/).length > query.scan(/[^A-Z\s0-9]/).length and
+            !query.include?(m.bot.nick)
 
           @db.add_loud(query, m.channel.name, m.user.nick)
           m.reply(@db.randomloud)
@@ -137,15 +133,15 @@ module Cinch::Plugins
 
     class TALKINGTOLOUD
       include Cinch::Plugin
-      
+
       def initialize(*args)
-        super *args
+        super
         @db = REDIS.new
       end
 
-      prefix lambda { |m| "#{m.bot.nick}" }
+      self.prefix = lambda { |m| m.bot.nick }
       match %r/.*/, :use_prefix => true, :use_suffix => false
-      
+
       def execute(m)
         m.reply(@db.randomloud)
       end
@@ -155,12 +151,12 @@ module Cinch::Plugins
       include Cinch::Plugin
 
       def initialize(*args)
-        super *args
+        super
         @db = REDIS.new
       end
 
       match %r!search\s*(.+)!, :use_prefix => true
-      react_on :channel
+      self.reacting_on = :channel
 
       def execute(m, query)
         @db.search(query.upcase).last(5).each do |loud|
@@ -173,12 +169,12 @@ module Cinch::Plugins
       include Cinch::Plugin
 
       def initialize(*args)
-        super *args
+        super
         @db = REDIS.new
       end
 
       match %r/(whosaid|bump|sage|score)$/, :use_prefix => true, :use_suffix => false
-      react_on :channel
+      self.reacting_on = :channel
 
       def execute(m, query)
         case query
@@ -197,7 +193,7 @@ module Cinch::Plugins
     class LOUDDONG
       include Cinch::Plugin
       match %r/dongs?$/, :use_prefix => true, :use_suffix => false
-      react_on :channel
+      self.reacting_on = :channel
 
       def execute(m)
         m.reply("8" + ('=' * (rand(20).to_i + 1)) + "D")
