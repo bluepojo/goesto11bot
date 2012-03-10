@@ -1,66 +1,100 @@
 require 'redis'
 require 'yaml'
 require 'twitter'
+require 'tire'
 
 module Cinch::Plugins
   module LOUD
-    class REDIS
+
+    class ES
+      LOUD_INDEX = 'louds'
 
       class << self
         attr_accessor :last_loud
       end
 
       def initialize
-        @db = Redis.new(:path => 'redis.sock')
-        self.class.last_loud = randomloud
-      end
-
-      def add_loud(loud, channel, nick)
-        @db.hsetnx(loud, "score", 1)
-        @db.hsetnx(loud, "whosaid_nick", nick)
-        @db.hsetnx(loud, "whosaid_channel", channel)
-        @db.persist loud
+        @index = Tire.index('louds')
+        randomloud
       end
 
       def randomloud
-        key = nil
-
-        loop do
-          key = @db.randomkey
-          score = @db.hget(key, "score")
-
-          if score.to_i >= 0
-            break
+        result = Tire.search('louds') do 
+          query do 
+            boolean do
+              must { string 'score:[1 TO *]' }
+            end
           end
-        end
 
-        self.class.last_loud = key
+          sort do
+            by :_script => { :script => "random()", :type => "number", :order => "desc" }
+          end
+        end.results.first
+
+        self.class.last_loud = result
       end
 
-      def bump
-        @db.hset(self.class.last_loud, "score", (@db.hget(self.class.last_loud, "score") || 0).to_i + 1)
-      end
-
-      def sage
-        @db.hset(self.class.last_loud, "score", (@db.hget(self.class.last_loud, "score") || 0).to_i - 1)
+      def add_loud(loud, channel, nick)
+        @index.store(:loud => loud, :channel => channel, :nick => nick, :score => 1)
+        @index.refresh
       end
 
       def search(pattern)
-        ary = @db.keys(pattern)
-        self.class.last_loud = ary[-1]
-        return ary
+        results = Tire.search('louds') do
+          query do
+            string pattern.upcase
+          end
+          sort do
+            by :_script => { :script => "random()", :type => "number", :order => "desc" }
+          end
+        end.results.to_a.last(5)
+
+        self.class.last_loud = results[-1]
+        results
       end
 
+      def searchterm(term)
+        results = Tire.search('louds') do
+          query do
+            boolean do
+              must { string term }
+            end
+          end
+          sort do
+            by :_script => { :script => "random()", :type => "number", :order => "desc" }
+          end
+        end.results.to_a.last(5)
+
+        self.class.last_loud = results[-1]
+        results
+      end
+
+      def bump
+        ll = self.class.last_loud.to_hash
+        ll[:score] = (self.class.last_loud.score.to_i + 1).to_s
+        @index.store(ll)
+        @index.refresh
+        self.class.last_loud = @index.retrieve('document', ll[:id])
+      end
+
+      def sage
+        ll = self.class.last_loud.to_hash
+        ll[:score] = (self.class.last_loud.score.to_i - 1).to_s
+        @index.store(ll)
+        @index.refresh
+        self.class.last_loud = @index.retrieve('document', ll[:id])
+      end
+      
       def score
-        return "#{self.class.last_loud}: #{@db.hget(self.class.last_loud, "score")}"
+        return "#{self.class.last_loud[:loud]}: #{self.class.last_loud[:score]}"
       end
 
       def whosaid
-        return "#{self.class.last_loud}: #{@db.hget(self.class.last_loud, "whosaid_nick") || "unknown"} (#{@db.hget(self.class.last_loud, "whosaid_channel") || "unknown"})"
+        return "#{self.class.last_loud[:loud]}: #{self.class.last_loud[:nick] || "unknown"} (#{self.class.last_loud[:channel] || "unknown"})"
       end
 
-      def twit_last
-        return self.class.last_loud
+      def twitlast
+        self.class.last_loud[:loud]
       end
     end
 
@@ -95,14 +129,13 @@ module Cinch::Plugins
       def initialize(*args)
         super
         @twit = TWIT.new
-        @db = REDIS.new
       end
 
       match "twitlast"
       self.react_on = :channel
 
       def execute(m)
-        @twit.post(@db.twit_last)
+        @twit.post(ES.last_loud[:loud])
         m.reply @twit.get_last
       end
     end
@@ -114,7 +147,7 @@ module Cinch::Plugins
 
       def initialize(*args)
         super
-        @db = REDIS.new
+        @db = ES.new
       end
 
       match %r/^([A-Z0-9\W]{#{MIN_LENGTH},})$/, :use_prefix => false, :use_suffix => false
@@ -126,7 +159,7 @@ module Cinch::Plugins
             !query.include?(m.bot.nick)
 
           @db.add_loud(query, m.channel.name, m.user.nick)
-          m.reply(@db.randomloud)
+          m.reply(@db.randomloud[:loud])
         end
       end
     end
@@ -136,14 +169,14 @@ module Cinch::Plugins
 
       def initialize(*args)
         super
-        @db = REDIS.new
+        @db = ES.new
       end
 
       self.prefix = lambda { |m| m.bot.nick }
       match %r/.*/, :use_prefix => true, :use_suffix => false
 
       def execute(m)
-        m.reply(@db.randomloud)
+        m.reply(@db.randomloud[:loud])
       end
     end
 
@@ -152,15 +185,22 @@ module Cinch::Plugins
 
       def initialize(*args)
         super
-        @db = REDIS.new
+        @db = ES.new 
       end
 
-      match %r!search\s*(.+)!, :use_prefix => true
+      match %r!(search(?:term)?)\s*(.+)!, :use_prefix => true
       self.react_on = :channel
 
-      def execute(m, query)
-        @db.search(query.upcase).last(5).each do |loud|
-          m.reply(loud)
+      def execute(m, command, query)
+        case command
+        when 'search'
+          @db.search(query.upcase).each do |loud|
+            m.reply(loud[:loud])
+          end
+        when 'searchterm'
+          @db.searchterm(query).each do |loud|
+            m.reply(loud[:loud])
+          end
         end
       end
     end
@@ -170,7 +210,7 @@ module Cinch::Plugins
 
       def initialize(*args)
         super
-        @db = REDIS.new
+        @db = ES.new
       end
 
       match %r/(whosaid|bump|sage|score)$/, :use_prefix => true, :use_suffix => false
