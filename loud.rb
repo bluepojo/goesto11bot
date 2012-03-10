@@ -199,5 +199,15 @@ module Cinch::Plugins
         m.reply("8" + ('=' * (rand(20).to_i + 1)) + "D")
       end
     end
+
+    class LOUDTACO
+      include Cinch::Plugin
+
+      match %r/tacome$/, :use_prefix => true, :use_suffix => false
+
+      def execute(m)
+        m.reply("http://i.imgur.com/ynrKx.gif")
+      end
+    end
   end
 end
