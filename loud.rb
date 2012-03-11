@@ -1,4 +1,3 @@
-require 'redis'
 require 'yaml'
 require 'twitter'
 require 'tire'
