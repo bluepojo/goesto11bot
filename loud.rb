@@ -89,7 +89,8 @@ module Cinch::Plugins
       end
 
       def whosaid
-        return "#{self.class.last_loud[:loud]}: #{self.class.last_loud[:nick] || "unknown"} (#{self.class.last_loud[:channel] || "unknown"})"
+        return "I HAVE NO IDEA WHO SAID THAT, OH GOD" unless self.class.last_loud[:nick]
+        return "#{self.class.last_loud[:loud]}: #{self.class.last_loud[:nick]} (#{self.class.last_loud[:channel] || "unknown"})"
       end
 
       def twitlast
